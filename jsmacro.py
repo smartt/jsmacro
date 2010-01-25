@@ -64,6 +64,22 @@ __doc__ = """  jsmacro is pre-processor for JavaScript.  (Where "macro" leans mo
   jsmacro doesn't bother to clean up extra whitespace or linebreaks that result
   in macro parsing, since that's the job of a JavaScript minifier (which in my
   case, is the tool that runs next in my build process, right after jsmacro.)
+  
+  jsmacro currently only supports @define and @if statements.  (Which can also
+  be written as #define and #if, if that makes you more comfortable, but you'll
+  need to pass the --hash argument from the command-line.)
+  
+  = Why bother =
+  (1) Conditional "compiling" allows one to leave in test/debug/logging/etc. 
+  for development and debugging, and have it automatically removed in production
+  builds.  Used well, it can offer a productivity boost.
+  
+  (2) Traditional C-preprocessor syntax isn't valid JavaScript.  The "//@"
+  syntax used by jsmacro is valid JavaScript, thus source files run just fine
+  in the browser without needing preprocssing.  (i.e., The original source
+  files are what you use in development, and crunch with jsmacro only for
+  creating production releases.)
+
 
 """
 import getopt
