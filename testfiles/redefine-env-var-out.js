@@ -1,8 +1,10 @@
 
+
 var foo = function() {
 
-  var bar = "Hello World";
+  alert('starting...');
 
+  var bar = "Hello World";
 
   alert('This.');
   alert('That.');
