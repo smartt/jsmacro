@@ -63,9 +63,19 @@ jsmacro currently only supports @define and @if statements.  (Which can also be 
 (1) Conditional "compiling" allows one to leave in test/debug/logging/etc. for development and debugging, and have it automatically removed in production builds.  Used well, it can offer a productivity boost.
   
 (2) Traditional C-preprocessor syntax isn't valid JavaScript.  The "//@" syntax used by jsmacro is valid JavaScript, thus source files run just fine in the browser without needing preprocssing.  (i.e., The original source files are what you use in development, and crunch with jsmacro only for creating production releases.)
-
-
 """
+
+__todo__ = """
+ - allow defining variables from command-line. (useful for producing different builds, e.g., an IE6 build vs. big-boy browsers)
+ - a macro to define new macros at runtime (e.g., defining a macro within the source JavaScript)
+ - handle_ifdef (which is very similar to handle_if)
+ - handle_ifndef
+ - handle else statements
+ - ability to use define for replacements
+ - handle_inline (replacing calls to a function with inline code)
+ - handle __date__, __time__, and __timestamp__
+"""
+
 import getopt
 import hashlib
 import os
@@ -173,7 +183,7 @@ class Parser(object):
     print "Done."
 
   def parse(self, file_name):
-    print "\n-----------------\nParser::parse(%s)" % (file_name)
+    #print "\n-----------------\nParser::parse(%s)" % (file_name)
 
     self.macro_engine.reset()
 
@@ -189,7 +199,7 @@ class Parser(object):
         k = mo.group(2) # key
         v = mo.group(3) # value
 
-        print "MacroEngine::handle_define(): %s -> %s" % (k, v)
+        #print "MacroEngine::handle_define(): %s -> %s" % (k, v)
         self.macro_engine.handle_define(k, v)
 
     # Delete the DEFINE statements
@@ -222,7 +232,7 @@ def main():
   mc = '@'
 
   try:
-    opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "file=", "doc", "hash", "test"])
+    opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "file=", "doc", "hash", "test", "todo"])
   except getopt.GetoptError, err:
     print str(err)
     usage()
@@ -239,6 +249,10 @@ def main():
 
     if o in ["--doc"]:
       print __doc__
+      sys.exit(2)
+
+    if o in ["--todo"]:
+      print __todo__
       sys.exit(2)
 
     elif o in ["-f", "--file"]:
