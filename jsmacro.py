@@ -49,6 +49,31 @@ class MacroEngine(object):
     except KeyError:
       return "\n%s" % text
 
+  def handle_ifdef(self, arg, text):
+    """
+    @param    arg    String    Statement found after the 'ifdef'. Currently expected to be a variable (i.e., key) in the env dictionary.
+    @param    text   String    The text found between the macro statements
+    
+    An ifdef is true if the variable 'arg' exists in the environment, regardless of whether
+    it resolves to True or False.
+    """
+    if (self.env.has_key(arg)):
+      return "\n%s" % text
+    else:
+      return ''
+
+  def handle_ifndef(self, arg, text):
+    """
+    @param    arg    String    Statement found after the 'ifndef'. Currently expected to be a variable (i.e., key) in the env dictionary.
+    @param    text   String    The text found between the macro statements
+    
+    An ifndef is true if the variable 'arg' does not exist in the environment.
+    """
+    if (self.env.has_key(arg)):
+      return ''
+    else:
+      return "\n%s" % text
+
   def handle_macro(self, mo):
     #print "1: %s" % mo.group(1)
     #print "2: %s" % mo.group(2)

@@ -54,7 +54,7 @@ This tool was developed to meet a desire to strip Debug and Test code from produ
 
 jsmacro doesn't bother to clean up extra whitespace or line-breaks that result in macro parsing, since that's the job of a JavaScript minifier (which in my case, is the tool that runs next in my build process, right after jsmacro.)
   
-jsmacro currently only supports @define and @if statements.  (Which can also be written as #define and #if, if that makes you more comfortable, but you'll need to pass the --hash argument from the command-line.)
+jsmacro currently only supports @define, @if, @ifdef, and @ifndef statements.  (Which can also be written as #define and #if, if that makes you more comfortable, but you'll need to pass the --hash argument from the command-line.)
 
 
 Why bother
