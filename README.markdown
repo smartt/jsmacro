@@ -23,6 +23,7 @@ This tool was developed to meet a desire to strip Debug and Test code from produ
 
 
 #### Resulting JavaScript
+
     var foo = function() {
       alert('This.');
       alert('That.');
@@ -46,6 +47,7 @@ This tool was developed to meet a desire to strip Debug and Test code from produ
 
 
 #### Resulting JavaScript
+
     var foo = function() {
 
       print "Hi";
@@ -65,10 +67,7 @@ Why bother
 
 To Do
 -----
- - allow defining variables from command-line. (useful for producing different builds, e.g., an IE6 build vs. big-boy browsers)
  - a macro to define new macros at runtime (e.g., defining a macro within the source JavaScript)
- - handle_ifdef (which is very similar to handle_if)
- - handle_ifndef
  - handle else statements
  - ability to use define for replacements
  - handle_inline (replacing calls to a function with inline code)

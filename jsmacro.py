@@ -3,7 +3,7 @@
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 import getopt
 import hashlib
@@ -21,11 +21,9 @@ class MacroEngine(object):
 
   def reset(self):
     self.env = {}
-    #print "MacroEngine.env is now: %s" % (self.env)
 
-  def handle_define(self, key, value):
+  def handle_define(self, key, value=1):
     self.env[key] = eval(value)
-    #print "MacroEngine.env is now: %s" % (self.env)
 
   def handle_if(self, arg, text):
     """
@@ -37,11 +35,8 @@ class MacroEngine(object):
     # side-effects, we'll return 'text' arg is True, otherwise we return an
     # empty string.  In other words, we return the text to output based on how
     # we process the macro.
-    #print "MacroEngine::handle_if(arg='%s')" % (arg)
     
     try:
-      #print "self.env[arg] -> %s" % (self.env[arg])
-      
       if (self.env[arg]):
         return "\n%s" % text
       else:
@@ -89,8 +84,8 @@ class MacroEngine(object):
     # This is a fun line.  We construct a method name using the
     # string found in the regex, and call that method on self
     # with the arguments we have.  So, we can dynamically call
-    # methods... (and evantually, we'll be adding methods at
-    # runtime :-)
+    # methods... (and eventually, we'll support adding methods
+    # at runtime :-)
     return getattr(self, "handle_%s" % method)(args, code)
 
 class Parser(object):
@@ -137,8 +132,6 @@ class Parser(object):
     print "Done."
 
   def parse(self, file_name):
-    #print "\n-----------------\nParser::parse(%s)" % (file_name)
-
     self.macro_engine.reset()
 
     fp = open(file_name, 'r')
@@ -147,13 +140,10 @@ class Parser(object):
 
     # Parse for DEFINE statements
     for mo in self.re_define_macro.finditer(text):
-      #mo = self.re_define_macro.search(text)
-
       if mo:
         k = mo.group(2) # key
         v = mo.group(3) # value
 
-        #print "MacroEngine::handle_define(): %s -> %s" % (k, v)
         self.macro_engine.handle_define(k, v)
 
     # Delete the DEFINE statements
@@ -184,9 +174,10 @@ def main():
   input_file = 0
   run_tests = False
   mc = '@'
+  predefined = []
 
   try:
-    opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "file=", "doc", "hash", "test", "todo"])
+    opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "file=", "doc", "hash", "test", "todo", "def="])
   except getopt.GetoptError, err:
     print str(err)
     usage()
@@ -209,12 +200,16 @@ def main():
       print __todo__
       sys.exit(2)
 
-    elif o in ["-f", "--file"]:
+    if o in ["-f", "--file"]:
       input_file = a
       continue
 
     if o in ["--test"]:
       run_tests = True
+      continue
+
+    if o in ["--def"]:
+      predefined.append(a)
       continue
 
     else:
@@ -223,6 +218,10 @@ def main():
       sys.exit(2)
 
   p = Parser(macro_char=mc)
+  
+  for v in predefined:
+    # This is a little ugly
+    p.macro_engine.env[v] = 1
 
   if (run_tests):
     p.test()
