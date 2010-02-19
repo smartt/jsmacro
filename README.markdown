@@ -56,19 +56,30 @@ This tool was developed to meet a desire to strip Debug and Test code from produ
 
 jsmacro doesn't bother to clean up extra whitespace or line-breaks that result in macro parsing, since that's the job of a JavaScript minifier (which in my case, is the tool that runs next in my build process, right after jsmacro.)
   
-jsmacro currently only supports @define, @if, @ifdef, and @ifndef statements.  (Which can also be written as #define and #if, if that makes you more comfortable, but you'll need to pass the --hash argument from the command-line.)
+jsmacro currently only supports @define, @if, @ifdef, and @ifndef statements.  @if, @ifdef, and @ifndef also support @else clauses.  (All of which can be written with a '#' instead of a '@', if that makes you more comfortable, but you'll need to pass the --hash argument from the command-line.)
 
 
 Why bother
 ----------
-1. Conditional "compiling" allows one to leave in test/debug/logging/etc. for development and debugging, and have it automatically removed in production builds.  Used well, it can offer a productivity boost.
+1. Conditional "compiling" allows one to leave in test/debug/logging/etc. for development and debugging, and have it automatically removed in production builds.  Used well, it can offer a productivity boost.  Alternatively, one can use jsmacro to build target-specific JavaScript (e.g., perhaps doing string concatenation differently on IE6 than on Chrome.)
 2. Traditional C-preprocessor syntax isn't valid JavaScript.  The "//@" syntax used by jsmacro is valid JavaScript, thus source files run just fine in the browser without needing preprocssing.  (i.e., The original source files are what you use in development, and crunch with jsmacro only for creating production releases.)
 
 
 To Do
 -----
  - a macro to define new macros at runtime (e.g., defining a macro within the source JavaScript)
- - handle else statements
  - ability to use define for replacements
  - handle_inline (replacing calls to a function with inline code)
  - handle __date__, __time__, and __timestamp__
+
+Changes
+-------
+v0.2.3
+
+ - Added support for @else clauses to @if, @ifdef, and @ifndef macros.
+
+v0.2.2
+
+ - Test files are now picked-up automatically when named correctly. This makes it painless to add more tests.
+ - Added support for setting DEFINE flags from the command-line. Handy if you automate builds for different environments (like IE6 vs. the rest of the world.)
+ - Added support for #ifdef and #ifndef

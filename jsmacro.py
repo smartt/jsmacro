@@ -3,7 +3,7 @@
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 import getopt
 import hashlib
