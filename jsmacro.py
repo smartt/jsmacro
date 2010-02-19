@@ -16,8 +16,9 @@ class MacroEngine(object):
   The MacroEngine is where the magic happens. It defines methods that are called
   to handle the macros found in a document.
   """
-  def __init__(self):
+  def __init__(self, macro_char):
     self.reset()
+    self.macro_char = macro_char
 
   def reset(self):
     self.env = {}
@@ -27,20 +28,23 @@ class MacroEngine(object):
 
   def handle_if(self, arg, text):
     """
+    Returns the text to output based on the value of 'arg'.  E.g., if arg evaluates to false,
+    expect to get an empty string back.
+
     @param    arg    String    Statement found after the 'if'. Currently expected to be a variable (i.e., key) in the env dictionary.
     @param    text   String    The text found between the macro statements
     """
-    # Basically, we evaluate 'arg', and if it's True, we keep 'text'.  If not,
-    # 'text' is stripped from the output.  Since we want to do this without
-    # side-effects, we'll return 'text' arg is True, otherwise we return an
-    # empty string.  In other words, we return the text to output based on how
-    # we process the macro.
-    
+    # To handle the '//@else' statement, we'll split text on the statement.
+    parts = text.split('//%selse' % (self.macro_char))
+
     try:
       if (self.env[arg]):
-        return "\n%s" % text
+        return "\n%s" % parts[0]
       else:
-        return ''
+        try:
+          return "%s" % parts[1]
+        except IndexError:
+          return ''
     except KeyError:
       return "\n%s" % text
 
@@ -52,10 +56,15 @@ class MacroEngine(object):
     An ifdef is true if the variable 'arg' exists in the environment, regardless of whether
     it resolves to True or False.
     """
+    parts = text.split('//%selse' % (self.macro_char))
+
     if (self.env.has_key(arg)):
-      return "\n%s" % text
+      return "\n%s" % parts[0]
     else:
-      return ''
+      try:
+        return "%s" % parts[1]
+      except IndexError:
+        return ''
 
   def handle_ifndef(self, arg, text):
     """
@@ -64,10 +73,15 @@ class MacroEngine(object):
     
     An ifndef is true if the variable 'arg' does not exist in the environment.
     """
+    parts = text.split('//%selse' % (self.macro_char))
+
     if (self.env.has_key(arg)):
-      return ''
+      try:
+        return "%s" % parts[1]
+      except IndexError:
+        return ''
     else:
-      return "\n%s" % text
+      return "\n%s" % parts[0]
 
   def handle_macro(self, mo):
     #print "1: %s" % mo.group(1)
@@ -89,10 +103,12 @@ class MacroEngine(object):
     return getattr(self, "handle_%s" % method)(args, code)
 
 class Parser(object):
-  def __init__(self, macro_char='@'):
-    self.macro_engine = MacroEngine()
-    
+  def __init__(self, macro_char='@', save_expected_failures=0):
     self.macro_char = macro_char # This allows overridding (possibly using '#' instead)
+
+    self.macro_engine = MacroEngine(self.macro_char)
+
+    self.save_expected_failures = save_expected_failures
 
     # Now that we know the macro_char, we can compile the main patterns
     self.re_define_macro = re.compile("(\s*\/\/\%sdefine\s*)(\w*)\s*(\w*)" % (self.macro_char), re.I)
@@ -123,8 +139,16 @@ class Parser(object):
           print "PASS [%s]" % (in_file_path)
         else:
           print "FAIL [%s]" % (in_file_path)
-          print "\n-- EXPECTED --\n%s" % (out_target_output)
-          print "\n-- GOT --\n%s" % (in_parsed)
+          
+          if self.save_expected_failures:
+            # Write the expected output file for local diffing
+            fout = open('%s_expected' % out_file_path, 'w')
+            fout.write(in_parsed)
+            fout.close()
+
+          else:
+            print "\n-- EXPECTED --\n%s" % (out_target_output)
+            print "\n-- GOT --\n%s" % (in_parsed)
 
   def test(self):
     print "Testing..."
@@ -175,9 +199,10 @@ def main():
   run_tests = False
   mc = '@'
   predefined = []
+  save_expected_failures = False
 
   try:
-    opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "file=", "doc", "hash", "test", "todo", "def="])
+    opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "file=", "doc", "hash", "test", "todo", "def=", "savefail"])
   except getopt.GetoptError, err:
     print str(err)
     usage()
@@ -212,12 +237,16 @@ def main():
       predefined.append(a)
       continue
 
+    if o in ["--savefail"]:
+      save_expected_failures = True
+      continue
+
     else:
       assert False, "unhandled option"
       usage()
       sys.exit(2)
 
-  p = Parser(macro_char=mc)
+  p = Parser(macro_char=mc, save_expected_failures=save_expected_failures)
   
   for v in predefined:
     # This is a little ugly
