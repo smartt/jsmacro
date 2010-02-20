@@ -170,9 +170,9 @@ class Parser(object):
     fp.close()
 
     # Replace supported __foo__ statements
-    text = self.re_date_sub_macro.sub('%s' % (now.strftime("%b %d, %Y")), text)
-    text = self.re_time_sub_macro.sub('%s' % (now.strftime("%I:%M%p")), text)
-    text = self.re_datetime_sub_macro.sub('%s' % (now.strftime("%b %d, %Y %I:%M%p")), text)
+    text = self.re_date_sub_macro.sub('%s' % (now.strftime("%b %d, %Y")),
+      self.re_time_sub_macro.sub('%s' % (now.strftime("%I:%M%p")),
+      self.re_datetime_sub_macro.sub('%s' % (now.strftime("%b %d, %Y %I:%M%p")), text)))
 
     # Parse for DEFINE statements
     for mo in self.re_define_macro.finditer(text):
