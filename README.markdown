@@ -74,6 +74,7 @@ To Do
 Changes
 -------
 v0.2.4
+
  - Supports @\_\_date\_\_, @\_\_time\_\_, and @\_\_datetime\_\_ substitutions anywhere in the code
 
 v0.2.3
