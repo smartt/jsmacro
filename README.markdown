@@ -70,10 +70,12 @@ To Do
  - a macro to define new macros at runtime (e.g., defining a macro within the source JavaScript)
  - ability to use define for replacements
  - handle_inline (replacing calls to a function with inline code)
- - handle __date__, __time__, and __timestamp__
 
 Changes
 -------
+v0.2.4
+ - Supports @__date__, @__time__, and @__datetime__ substitutions anywhere in the code
+
 v0.2.3
 
  - Added support for @else clauses to @if, @ifdef, and @ifndef macros.

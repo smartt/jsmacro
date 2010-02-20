@@ -3,8 +3,9 @@
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.3"
+__version__ = "0.2.4"
 
+from datetime import datetime
 import getopt
 import hashlib
 import os
@@ -112,6 +113,10 @@ class Parser(object):
 
     # Now that we know the macro_char, we can compile the main patterns
     self.re_define_macro = re.compile("(\s*\/\/\%sdefine\s*)(\w*)\s*(\w*)" % (self.macro_char), re.I)
+    
+    self.re_date_sub_macro = re.compile("%s\_\_date\_\_" % (self.macro_char))
+    self.re_time_sub_macro = re.compile("%s\_\_time\_\_" % (self.macro_char))
+    self.re_datetime_sub_macro = re.compile("%s\_\_datetime\_\_" % (self.macro_char))
 
     # A wrapped macro takes the following form:
     #
@@ -157,10 +162,17 @@ class Parser(object):
 
   def parse(self, file_name):
     self.macro_engine.reset()
+    
+    now = datetime.now()
 
     fp = open(file_name, 'r')
     text = fp.read()
     fp.close()
+
+    # Replace supported __foo__ statements
+    text = self.re_date_sub_macro.sub('%s' % (now.strftime("%b %d, %Y")), text)
+    text = self.re_time_sub_macro.sub('%s' % (now.strftime("%I:%M%p")), text)
+    text = self.re_datetime_sub_macro.sub('%s' % (now.strftime("%b %d, %Y %I:%M%p")), text)
 
     # Parse for DEFINE statements
     for mo in self.re_define_macro.finditer(text):
