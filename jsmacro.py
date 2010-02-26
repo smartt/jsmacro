@@ -3,7 +3,7 @@
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.4"
+__version__ = "0.2.5"
 
 from datetime import datetime
 import getopt
@@ -17,9 +17,8 @@ class MacroEngine(object):
   The MacroEngine is where the magic happens. It defines methods that are called
   to handle the macros found in a document.
   """
-  def __init__(self, macro_char):
+  def __init__(self):
     self.reset()
-    self.macro_char = macro_char
 
   def reset(self):
     self.env = {}
@@ -36,7 +35,7 @@ class MacroEngine(object):
     @param    text   String    The text found between the macro statements
     """
     # To handle the '//@else' statement, we'll split text on the statement.
-    parts = text.split('//%selse' % (self.macro_char))
+    parts = re.split('//[\@|#]else', text)
 
     try:
       if (self.env[arg]):
@@ -53,11 +52,11 @@ class MacroEngine(object):
     """
     @param    arg    String    Statement found after the 'ifdef'. Currently expected to be a variable (i.e., key) in the env dictionary.
     @param    text   String    The text found between the macro statements
-    
+
     An ifdef is true if the variable 'arg' exists in the environment, regardless of whether
     it resolves to True or False.
     """
-    parts = text.split('//%selse' % (self.macro_char))
+    parts = re.split('//[\@|#]else', text)
 
     if (self.env.has_key(arg)):
       return "\n%s" % parts[0]
@@ -71,10 +70,10 @@ class MacroEngine(object):
     """
     @param    arg    String    Statement found after the 'ifndef'. Currently expected to be a variable (i.e., key) in the env dictionary.
     @param    text   String    The text found between the macro statements
-    
+
     An ifndef is true if the variable 'arg' does not exist in the environment.
     """
-    parts = text.split('//%selse' % (self.macro_char))
+    parts = re.split('//[\@|#]else', text)
 
     if (self.env.has_key(arg)):
       try:
@@ -104,26 +103,25 @@ class MacroEngine(object):
     return getattr(self, "handle_%s" % method)(args, code)
 
 class Parser(object):
-  def __init__(self, macro_char='@', save_expected_failures=0):
-    self.macro_char = macro_char # This allows overridding (possibly using '#' instead)
-
-    self.macro_engine = MacroEngine(self.macro_char)
+  def __init__(self, save_expected_failures=0):
+    self.macro_engine = MacroEngine()
 
     self.save_expected_failures = save_expected_failures
 
-    # Now that we know the macro_char, we can compile the main patterns
-    self.re_define_macro = re.compile("(\s*\/\/\%sdefine\s*)(\w*)\s*(\w*)" % (self.macro_char), re.I)
-    
-    self.re_date_sub_macro = re.compile("%s\_\_date\_\_" % (self.macro_char))
-    self.re_time_sub_macro = re.compile("%s\_\_time\_\_" % (self.macro_char))
-    self.re_datetime_sub_macro = re.compile("%s\_\_datetime\_\_" % (self.macro_char))
+    # Compile the main patterns
+    self.re_define_macro = re.compile("(\s*\/\/[\@|#]define\s*)(\w*)\s*(\w*)", re.I)
+
+    self.re_date_sub_macro = re.compile("[\@|#]\_\_date\_\_")
+    self.re_time_sub_macro = re.compile("[\@|#]\_\_time\_\_")
+    self.re_datetime_sub_macro = re.compile("[\@|#]\_\_datetime\_\_")
 
     # A wrapped macro takes the following form:
     #
     # //@MACRO <ARGUMENTS>
     # ...some code
     # //@end
-    self.re_wrapped_macro = re.compile("(\s*\/\/\%s)([a-z]+)\s+(\w*?\s)(.*?)(\s*\/\/\%send)" % (self.macro_char, self.macro_char), re.M|re.S)
+    self.re_wrapped_macro = re.compile("(\s*\/\/[\@|#])([a-z]+)\s+(\w*?\s)(.*?)(\s*\/\/[\@|#]end)", re.M|re.S)
+
 
   def _scan_for_test_files(self, arg, dirname, names):
     for in_filename in names:
@@ -132,7 +130,7 @@ class Parser(object):
         out_file_path = "%s/%s" % (dirname, "%sout.js" % (in_filename[:-5]))
 
         in_parsed = self.parse(in_file_path)
-        
+
         out_file = open(out_file_path, 'r')
         out_target_output = out_file.read()
         out_file.close()
@@ -144,7 +142,7 @@ class Parser(object):
           print "PASS [%s]" % (in_file_path)
         else:
           print "FAIL [%s]" % (in_file_path)
-          
+
           if self.save_expected_failures:
             # Write the expected output file for local diffing
             fout = open('%s_expected' % out_file_path, 'w')
@@ -162,7 +160,7 @@ class Parser(object):
 
   def parse(self, file_name):
     self.macro_engine.reset()
-    
+
     now = datetime.now()
 
     fp = open(file_name, 'r')
@@ -201,7 +199,6 @@ def usage():
   print "Options:"
   print "   --doc    Prints the module documentation."
   print "   --file   Same as -f; Used to load the input file."
-  print "   --hash   Changes the macro indicator from '@' to '#' (i.e., more C-like.)"
   print "   --help   Prints this Help message."
   print "   --test   Run the test suite."
 
@@ -209,12 +206,11 @@ def usage():
 def main():
   input_file = 0
   run_tests = False
-  mc = '@'
   predefined = []
   save_expected_failures = False
 
   try:
-    opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "file=", "doc", "hash", "test", "todo", "def=", "savefail"])
+    opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "file=", "doc", "test", "todo", "def=", "savefail"])
   except getopt.GetoptError, err:
     print str(err)
     usage()
@@ -224,10 +220,6 @@ def main():
     if o in ["-h", "--help"]:
       usage()
       sys.exit(2)
-
-    if o in ["--hash"]:
-      mc = '#'
-      continue
 
     if o in ["--doc"]:
       print __doc__
@@ -258,8 +250,8 @@ def main():
       usage()
       sys.exit(2)
 
-  p = Parser(macro_char=mc, save_expected_failures=save_expected_failures)
-  
+  p = Parser(save_expected_failures=save_expected_failures)
+
   for v in predefined:
     # This is a little ugly
     p.macro_engine.env[v] = 1
