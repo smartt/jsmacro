@@ -56,7 +56,18 @@ This tool was developed to meet a desire to strip Debug and Test code from produ
 
 jsmacro doesn't bother to clean up extra whitespace or line-breaks that result in macro parsing, since that's the job of a JavaScript minifier (which in my case, is the tool that runs next in my build process, right after jsmacro.)
   
-jsmacro currently only supports @define, @if, @ifdef, and @ifndef statements.  @if, @ifdef, and @ifndef also support @else clauses.  (All of which can be written with a '#' instead of a '@', if that makes you more comfortable.)
+Supported Macros
+----------------
+
+jsmacro currently supports:
+
+ - //@define
+ - //@if (with optional //@else)
+ - //@ifdef (with optional //@else)
+ - //@ifndef (with optional //@else)
+ - //@strip
+
+(Note that all macros can be written with a '//#' instead of a '//@', if that makes you more comfortable.)
 
 
 Why bother?
@@ -67,20 +78,28 @@ Why bother?
 
 Why Python?
 -----------
-It's available on all the development and deployment environments that I've used in the past who-knows-how-many years.  This is important, since it means not installing something new on servers (which might not be mine.)  While it might be fun to write this tool in Lisp, Haskell, or even JavaScript on v8, those aren't practical for a wider audience.  Perl, Python, and to some degree, Java, are a pretty safe bet.
+Besides being fun to use, Python is available on all of the development and deployment environments that I've used in the past who-knows-how-many years.  This is important, since it means not installing something new on servers (which might not be mine.)  While it might be fun to write this tool in Lisp, Haskell, or even JavaScript on v8, those aren't practical for a wider audience.  Perl, Python, and to some degree, Java, are a pretty safe bet.
+
+Note though, that the tool intentionally isn't called "pyjsmacro".  I'm perfectly happy having implementations in other languages, provided they all pass the same test cases.
 
 
-To Do
------
- - a macro to define new macros at runtime (e.g., defining a macro within the source JavaScript)
- - ability to use define for replacements
- - handle_inline (replacing calls to a function with inline code)
+Future Ideas
+------------
+ - A macro to define new macros at runtime (e.g., defining a macro within the source JavaScript)
+ - The ability to use define for replacements
+ - Handle_inline (replacing calls to a function with inline code)
+ - Recursive macro expansion for nested macros
+
 
 Changes
 -------
+v0.2.6
+
+ - Added a //@strip macro that clears the containing line. Handy if you want to remove a line here or there, but don't want the visual clutter of the @if...@end wrappers.
+
 v0.2.5
 
- - Dropped the --hash command-line flag, and just added '#' as a part of the regex.  (Meaning, both //@ and //# are just automatically supported.)
+ - Dropped the "--hash" command-line flag, and instead, added '#' as a part of the regex.  (Meaning, both //@ and //# are supported by default.)
 
 v0.2.4
 

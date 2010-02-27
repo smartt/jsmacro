@@ -3,7 +3,7 @@
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.5"
+__version__ = "0.2.6"
 
 from datetime import datetime
 import getopt
@@ -84,16 +84,9 @@ class MacroEngine(object):
       return "\n%s" % parts[0]
 
   def handle_macro(self, mo):
-    #print "1: %s" % mo.group(1)
-    #print "2: %s" % mo.group(2)
-    #print "3: %s" % mo.group(3)
-    #print "4: %s" % mo.group(4)
-    #print "5: %s" % mo.group(5)
     method = mo.group(2)
     args = mo.group(3).strip()
     code = "\n%s" % mo.group(4)
-
-    #print "call handle_%s(%s)" % (method, args)
 
     # This is a fun line.  We construct a method name using the
     # string found in the regex, and call that method on self
@@ -101,6 +94,7 @@ class MacroEngine(object):
     # methods... (and eventually, we'll support adding methods
     # at runtime :-)
     return getattr(self, "handle_%s" % method)(args, code)
+
 
 class Parser(object):
   def __init__(self, save_expected_failures=0):
@@ -111,9 +105,11 @@ class Parser(object):
     # Compile the main patterns
     self.re_define_macro = re.compile("(\s*\/\/[\@|#]define\s*)(\w*)\s*(\w*)", re.I)
 
-    self.re_date_sub_macro = re.compile("[\@|#]\_\_date\_\_")
-    self.re_time_sub_macro = re.compile("[\@|#]\_\_time\_\_")
-    self.re_datetime_sub_macro = re.compile("[\@|#]\_\_datetime\_\_")
+    self.re_date_sub_macro = re.compile("[\@|#]\_\_date\_\_", re.I)
+    self.re_time_sub_macro = re.compile("[\@|#]\_\_time\_\_", re.I)
+    self.re_datetime_sub_macro = re.compile("[\@|#]\_\_datetime\_\_", re.I)
+
+    self.re_stripline_macro = re.compile(".*\/\/[\@|#]strip.*", re.I)
 
     # A wrapped macro takes the following form:
     #
@@ -182,6 +178,9 @@ class Parser(object):
 
     # Delete the DEFINE statements
     text = self.re_define_macro.sub('', text)
+
+    # Drop any lines containing a //@strip statement
+    text = self.re_stripline_macro.sub('', text)
 
     # Do the magic...
     text = self.re_wrapped_macro.sub(self.macro_engine.handle_macro, text)
