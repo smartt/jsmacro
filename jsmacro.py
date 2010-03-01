@@ -1,16 +1,27 @@
 #!/usr/bin/env python
 
-__author__ = "Erik Smartt"
-__copyright__ = "Copyright 2010, Erik Smartt"
-__license__ = "MIT"
-__version__ = "0.2.9"
-
 from datetime import datetime
 import getopt
 import hashlib
 import os
 import re
 import sys
+
+__author__ = "Erik Smartt"
+__copyright__ = "Copyright 2010, Erik Smartt"
+__license__ = "MIT"
+__version__ = "0.2.9"
+__usage__ = """Normal usage:
+  jsmacro.py -f [INPUT_FILE_NAME] > [OUTPUT_FILE]
+
+  Options:
+     --def [VAR]   Sets the supplied variable to True in the parser environment.
+     --file [VAR]  Same as -f; Used to load the input file.
+     --help        Prints this Help message.
+     --savefail    Saves the expected output of a failed test case to disk.
+     --test        Run the test suite.
+     --version     Print the version number of jsmacro being used."""
+
 
 
 class MacroEngine(object):
@@ -154,17 +165,6 @@ class MacroEngine(object):
 # ---------------------------------
 #          MAIN
 # ---------------------------------
-__usage__ = """Normal usage:
-  jsmacro.py -f [INPUT_FILE_NAME] > [OUTPUT_FILE]
-
-  Options:
-     --def [VAR]   Sets the supplied variable to True in the parser environment.
-     --file [VAR]  Same as -f; Used to load the input file.
-     --help        Prints this Help message.
-     --savefail    Saves the expected output of a failed test case to disk.
-     --test        Run the test suite.
-     --version     Print the version number of jsmacro being used."""
-
 
 def scan_for_test_files(dirname, parser):
   for root, dirs, files in os.walk(dirname):
@@ -201,7 +201,7 @@ def scan_for_test_files(dirname, parser):
 # --------------------------------------------------
 #               MAIN
 # --------------------------------------------------
-def main():
+if __name__ == "__main__":
   p = MacroEngine()
 
   try:
@@ -248,6 +248,3 @@ def main():
 
   sys.exit(2)
 
-
-if __name__ == "__main__":
-  main()
