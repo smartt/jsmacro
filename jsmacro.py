@@ -230,7 +230,7 @@ def main():
   for o, a in opts:
     if o in ["--def"]:
       # This is a little ugly
-      p.macro_engine.env[a] = 1
+      p.macro_engine.handle_define(a)
       continue
 
     if o in ["--savefail"]:
