@@ -3,10 +3,15 @@
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.7"
+__version__ = "0.2.8"
 
 from datetime import datetime
+import getopt
+import hashlib
+import os
 import re
+import sys
+
 
 class MacroEngine(object):
   """
@@ -93,10 +98,10 @@ class MacroEngine(object):
 
 
 class Parser(object):
-  def __init__(self, save_expected_failures=0):
+  def __init__(self):
     self.macro_engine = MacroEngine()
 
-    self.save_expected_failures = save_expected_failures
+    self.save_expected_failures = False
 
     # Compile the main patterns
     self.re_define_macro = re.compile("(\s*\/\/[\@|#]define\s*)(\w*)\s*(\w*)", re.I)
@@ -114,45 +119,6 @@ class Parser(object):
     # //@end
     self.re_wrapped_macro = re.compile("(\s*\/\/[\@|#])([a-z]+)\s+(\w*?\s)(.*?)(\s*\/\/[\@|#]end)", re.M|re.S)
 
-
-  def _scan_for_test_files(self, arg, dirname, names):
-    import hashlib
-
-    for in_filename in names:
-      if in_filename.endswith('in.js'):
-        in_file_path = "%s/%s" % (dirname, in_filename)
-        out_file_path = "%s/%s" % (dirname, "%sout.js" % (in_filename[:-5]))
-
-        in_parsed = self.parse(in_file_path)
-
-        out_file = open(out_file_path, 'r')
-        out_target_output = out_file.read()
-        out_file.close()
-
-        # Hopefully this doesn't come back to bite me, but I'm using a hash of the
-        # output to compare it with the known TEST PASS state.  The odds of a false
-        # positive are pretty slim...
-        if (hashlib.sha224(out_target_output).hexdigest() == hashlib.sha224(in_parsed).hexdigest()):
-          print "PASS [%s]" % (in_file_path)
-        else:
-          print "FAIL [%s]" % (in_file_path)
-
-          if self.save_expected_failures:
-            # Write the expected output file for local diffing
-            fout = open('%s_expected' % out_file_path, 'w')
-            fout.write(in_parsed)
-            fout.close()
-
-          else:
-            print "\n-- EXPECTED --\n%s" % (out_target_output)
-            print "\n-- GOT --\n%s" % (in_parsed)
-
-  def test(self):
-    import os
-
-    print "Testing..."
-    os.path.walk('testfiles', self._scan_for_test_files, None)
-    print "Done."
 
   def parse(self, file_name):
     self.macro_engine.reset()
@@ -203,14 +169,43 @@ __usage__ = """Normal usage:
      --version     Print the version number of jsmacro being used."""
 
 
-def main():
-  import getopt
-  import sys
+def scan_for_test_files(dirname, parser):
+  for root, dirs, files in os.walk(dirname):
+    for in_filename in files:
+      if in_filename.endswith('in.js'):
+        in_file_path = "%s/%s" % (dirname, in_filename)
+        out_file_path = "%s/%s" % (dirname, "%sout.js" % (in_filename[:-5]))
 
-  input_file = 0
-  run_tests = False
-  predefined = []
-  save_expected_failures = False
+        in_parsed = parser.parse(in_file_path)
+
+        out_file = open(out_file_path, 'r')
+        out_target_output = out_file.read()
+        out_file.close()
+
+        # Hopefully this doesn't come back to bite me, but I'm using a hash of the
+        # output to compare it with the known TEST PASS state.  The odds of a false
+        # positive are pretty slim...
+        if (hashlib.sha224(out_target_output).hexdigest() == hashlib.sha224(in_parsed).hexdigest()):
+          print "PASS [%s]" % (in_file_path)
+        else:
+          print "FAIL [%s]" % (in_file_path)
+
+          if parser.save_expected_failures:
+            # Write the expected output file for local diffing
+            fout = open('%s_expected' % out_file_path, 'w')
+            fout.write(in_parsed)
+            fout.close()
+
+          else:
+            print "\n-- EXPECTED --\n%s" % (out_target_output)
+            print "\n-- GOT --\n%s" % (in_parsed)
+
+
+# --------------------------------------------------
+#               MAIN
+# --------------------------------------------------
+def main():
+  p = Parser()
 
   try:
     opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "file=", "test", "def=", "savefail", "version"])
@@ -219,46 +214,43 @@ def main():
     print __usage__
     sys.exit(2)
 
-  for o,a in opts:
+
+  # First handle commands that exit
+  for o, a in opts:
     if o in ["-h", "--help"]:
       print __usage__
       sys.exit(2)
-
-    if o in ["-f", "--file"]:
-      input_file = a
-      continue
-
-    if o in ["--test"]:
-      run_tests = True
-      continue
-
-    if o in ["--def"]:
-      predefined.append(a)
-      continue
-
-    if o in ["--savefail"]:
-      save_expected_failures = True
-      continue
 
     if o in ["--version"]:
       print __version__
       sys.exit(2)
 
-    else:
-      assert False, "unhandled option"
-      print __usage__
-      sys.exit(2)
 
-  p = Parser(save_expected_failures=save_expected_failures)
+  # Next, handle commands that config
+  for o, a in opts:
+    if o in ["--def"]:
+      # This is a little ugly
+      p.macro_engine.env[a] = 1
+      continue
 
-  for v in predefined:
-    # This is a little ugly
-    p.macro_engine.env[v] = 1
+    if o in ["--savefail"]:
+      p.save_expected_failures = True
+      continue
 
-  if (run_tests):
-    p.test()
-  elif (input_file):
-    print p.parse(input_file)
+
+  # Now handle commands the execute based on the config
+  for o, a in opts:
+    if o in ["-f", "--file"]:
+      print p.parse(a)
+      break
+
+    if o in ["--test"]:
+      print "Testing..."
+      scan_for_test_files("testfiles", p)
+      print "Done."
+      break
+
+  sys.exit(2)
 
 
 if __name__ == "__main__":

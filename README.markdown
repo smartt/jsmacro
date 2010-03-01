@@ -93,6 +93,10 @@ Future Ideas
 
 Changes
 -------
+v0.2.8
+
+ - Pulled testing code out of the parser object and into functions that call the parser instead.
+
 v0.2.7
 
  - Updated USAGE string to match recent changes.
