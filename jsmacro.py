@@ -3,14 +3,10 @@
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.6"
+__version__ = "0.2.7"
 
 from datetime import datetime
-import getopt
-import hashlib
-import os
 import re
-import sys
 
 class MacroEngine(object):
   """
@@ -120,6 +116,8 @@ class Parser(object):
 
 
   def _scan_for_test_files(self, arg, dirname, names):
+    import hashlib
+
     for in_filename in names:
       if in_filename.endswith('in.js'):
         in_file_path = "%s/%s" % (dirname, in_filename)
@@ -150,6 +148,8 @@ class Parser(object):
             print "\n-- GOT --\n%s" % (in_parsed)
 
   def test(self):
+    import os
+
     print "Testing..."
     os.path.walk('testfiles', self._scan_for_test_files, None)
     print "Done."
@@ -191,41 +191,37 @@ class Parser(object):
 # ---------------------------------
 #          MAIN
 # ---------------------------------
-def usage():
-  print "Normal usage:"
-  print "   jsmacro.py -f INPUT_FILE_NAME > OUTPUT_FILE"
-  print " "
-  print "Options:"
-  print "   --doc    Prints the module documentation."
-  print "   --file   Same as -f; Used to load the input file."
-  print "   --help   Prints this Help message."
-  print "   --test   Run the test suite."
+__usage__ = """Normal usage:
+  jsmacro.py -f [INPUT_FILE_NAME] > [OUTPUT_FILE]
+
+  Options:
+     --def [VAR]   Sets the supplied variable to True in the parser environment.
+     --file [VAR]  Same as -f; Used to load the input file.
+     --help        Prints this Help message.
+     --savefail    Saves the expected output of a failed test case to disk.
+     --test        Run the test suite.
+     --version     Print the version number of jsmacro being used."""
 
 
 def main():
+  import getopt
+  import sys
+
   input_file = 0
   run_tests = False
   predefined = []
   save_expected_failures = False
 
   try:
-    opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "file=", "doc", "test", "todo", "def=", "savefail"])
+    opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "file=", "test", "def=", "savefail", "version"])
   except getopt.GetoptError, err:
     print str(err)
-    usage()
+    print __usage__
     sys.exit(2)
 
   for o,a in opts:
     if o in ["-h", "--help"]:
-      usage()
-      sys.exit(2)
-
-    if o in ["--doc"]:
-      print __doc__
-      sys.exit(2)
-
-    if o in ["--todo"]:
-      print __todo__
+      print __usage__
       sys.exit(2)
 
     if o in ["-f", "--file"]:
@@ -244,9 +240,13 @@ def main():
       save_expected_failures = True
       continue
 
+    if o in ["--version"]:
+      print __version__
+      sys.exit(2)
+
     else:
       assert False, "unhandled option"
-      usage()
+      print __usage__
       sys.exit(2)
 
   p = Parser(save_expected_failures=save_expected_failures)

@@ -93,6 +93,10 @@ Future Ideas
 
 Changes
 -------
+v0.2.7
+
+ - Updated USAGE string to match recent changes.
+
 v0.2.6
 
  - Added a //@strip macro that clears the containing line. Handy if you want to remove a line here or there, but don't want the visual clutter of the @if...@end wrappers.
