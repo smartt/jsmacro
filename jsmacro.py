@@ -3,7 +3,7 @@
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.8"
+__version__ = "0.2.9"
 
 from datetime import datetime
 import getopt
@@ -19,6 +19,26 @@ class MacroEngine(object):
   to handle the macros found in a document.
   """
   def __init__(self):
+    self.save_expected_failures = False
+
+    self.re_else_pattern = '//[\@|#]else'
+
+    # Compile the main patterns
+    self.re_define_macro = re.compile("(\s*\/\/[\@|#]define\s*)(\w*)\s*(\w*)", re.I)
+
+    self.re_date_sub_macro = re.compile("[\@|#]\_\_date\_\_", re.I)
+    self.re_time_sub_macro = re.compile("[\@|#]\_\_time\_\_", re.I)
+    self.re_datetime_sub_macro = re.compile("[\@|#]\_\_datetime\_\_", re.I)
+
+    self.re_stripline_macro = re.compile(".*\/\/[\@|#]strip.*", re.I)
+
+    # A wrapped macro takes the following form:
+    #
+    # //@MACRO <ARGUMENTS>
+    # ...some code
+    # //@end
+    self.re_wrapped_macro = re.compile("(\s*\/\/[\@|#])([a-z]+)\s+(\w*?\s)(.*?)(\s*\/\/[\@|#]end)", re.M|re.S)
+
     self.reset()
 
   def reset(self):
@@ -36,7 +56,7 @@ class MacroEngine(object):
     @param    text   String    The text found between the macro statements
     """
     # To handle the '//@else' statement, we'll split text on the statement.
-    parts = re.split('//[\@|#]else', text)
+    parts = re.split(self.re_else_pattern, text)
 
     try:
       if (self.env[arg]):
@@ -57,7 +77,7 @@ class MacroEngine(object):
     An ifdef is true if the variable 'arg' exists in the environment, regardless of whether
     it resolves to True or False.
     """
-    parts = re.split('//[\@|#]else', text)
+    parts = re.split(self.re_else_pattern, text)
 
     if (self.env.has_key(arg)):
       return "\n%s" % parts[0]
@@ -74,7 +94,7 @@ class MacroEngine(object):
 
     An ifndef is true if the variable 'arg' does not exist in the environment.
     """
-    parts = re.split('//[\@|#]else', text)
+    parts = re.split(self.re_else_pattern, text)
 
     if (self.env.has_key(arg)):
       try:
@@ -97,31 +117,8 @@ class MacroEngine(object):
     return getattr(self, "handle_%s" % method)(args, code)
 
 
-class Parser(object):
-  def __init__(self):
-    self.macro_engine = MacroEngine()
-
-    self.save_expected_failures = False
-
-    # Compile the main patterns
-    self.re_define_macro = re.compile("(\s*\/\/[\@|#]define\s*)(\w*)\s*(\w*)", re.I)
-
-    self.re_date_sub_macro = re.compile("[\@|#]\_\_date\_\_", re.I)
-    self.re_time_sub_macro = re.compile("[\@|#]\_\_time\_\_", re.I)
-    self.re_datetime_sub_macro = re.compile("[\@|#]\_\_datetime\_\_", re.I)
-
-    self.re_stripline_macro = re.compile(".*\/\/[\@|#]strip.*", re.I)
-
-    # A wrapped macro takes the following form:
-    #
-    # //@MACRO <ARGUMENTS>
-    # ...some code
-    # //@end
-    self.re_wrapped_macro = re.compile("(\s*\/\/[\@|#])([a-z]+)\s+(\w*?\s)(.*?)(\s*\/\/[\@|#]end)", re.M|re.S)
-
-
   def parse(self, file_name):
-    self.macro_engine.reset()
+    self.reset()
 
     now = datetime.now()
 
@@ -140,7 +137,7 @@ class Parser(object):
         k = mo.group(2) # key
         v = mo.group(3) # value
 
-        self.macro_engine.handle_define(k, v)
+        self.handle_define(k, v)
 
     # Delete the DEFINE statements
     text = self.re_define_macro.sub('', text)
@@ -149,7 +146,7 @@ class Parser(object):
     text = self.re_stripline_macro.sub('', text)
 
     # Do the magic...
-    text = self.re_wrapped_macro.sub(self.macro_engine.handle_macro, text)
+    text = self.re_wrapped_macro.sub(self.handle_macro, text)
 
     return text
 
@@ -205,7 +202,7 @@ def scan_for_test_files(dirname, parser):
 #               MAIN
 # --------------------------------------------------
 def main():
-  p = Parser()
+  p = MacroEngine()
 
   try:
     opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "file=", "test", "def=", "savefail", "version"])
@@ -229,8 +226,7 @@ def main():
   # Next, handle commands that config
   for o, a in opts:
     if o in ["--def"]:
-      # This is a little ugly
-      p.macro_engine.handle_define(a)
+      p.handle_define(a)
       continue
 
     if o in ["--savefail"]:

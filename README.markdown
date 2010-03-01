@@ -93,12 +93,10 @@ Future Ideas
 
 Changes
 -------
-v0.2.8
+v0.2.7 - v0.2.9
 
  - Pulled testing code out of the parser object and into functions that call the parser instead.
-
-v0.2.7
-
+ - Merged the Parser and MacroEngine class, now that the test runner is no longer part of the parser.
  - Updated USAGE string to match recent changes.
 
 v0.2.6
