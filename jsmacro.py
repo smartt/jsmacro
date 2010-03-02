@@ -10,7 +10,7 @@ import sys
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.9"
+__version__ = "0.2.10"
 __usage__ = """Normal usage:
   jsmacro.py -f [INPUT_FILE_NAME] > [OUTPUT_FILE]
 
@@ -55,7 +55,10 @@ class MacroEngine(object):
   def reset(self):
     self.env = {}
 
-  def handle_define(self, key, value=1):
+  def handle_define(self, key, value='1'):
+    if (self.env.has_key(key)):
+      return
+
     self.env[key] = eval(value)
 
   def handle_if(self, arg, text):
@@ -129,8 +132,6 @@ class MacroEngine(object):
 
 
   def parse(self, file_name):
-    self.reset()
-
     now = datetime.now()
 
     fp = open(file_name, 'r')
@@ -196,6 +197,8 @@ def scan_for_test_files(dirname, parser):
           else:
             print "\n-- EXPECTED --\n%s" % (out_target_output)
             print "\n-- GOT --\n%s" % (in_parsed)
+
+        parser.reset()
 
 
 # --------------------------------------------------

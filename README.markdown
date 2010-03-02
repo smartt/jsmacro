@@ -93,6 +93,10 @@ Future Ideas
 
 Changes
 -------
+v0.2.10
+
+ - Fixed a bug where a DEFINE on the command-line wasn't overriding a DEFINE in the input file.
+
 v0.2.7 - v0.2.9
 
  - Pulled testing code out of the parser object and into functions that call the parser instead.
