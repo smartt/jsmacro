@@ -48,7 +48,7 @@ class MacroEngine(object):
     # //@MACRO <ARGUMENTS>
     # ...some code
     # //@end
-    self.re_wrapped_macro = re.compile("(\s*\/\/[\@|#])([a-z]+)\s+(\w*?\s)(.*?)(\s*\/\/[\@|#]end)", re.M|re.S)
+    self.re_wrapped_macro = re.compile("(\s*\/\/[\@|#])([a-z]+)\s+(\w*?\s)(.*?)(\s*\/\/[\@|#]end(if)?)", re.M|re.S)
 
     self.reset()
 
