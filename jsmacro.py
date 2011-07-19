@@ -219,11 +219,11 @@ if __name__ == "__main__":
   for o, a in opts:
     if o in ["-h", "--help"]:
       print __usage__
-      sys.exit(2)
+      sys.exit(0)
 
     if o in ["--version"]:
       print __version__
-      sys.exit(2)
+      sys.exit(0)
 
 
   # Next, handle commands that config
@@ -249,5 +249,5 @@ if __name__ == "__main__":
       print "Done."
       break
 
-  sys.exit(2)
+  sys.exit(0)
 
