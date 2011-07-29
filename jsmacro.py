@@ -10,7 +10,7 @@ import sys
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.10"
+__version__ = "0.2.11"
 __usage__ = """Normal usage:
   jsmacro.py -f [INPUT_FILE_NAME] > [OUTPUT_FILE]
 

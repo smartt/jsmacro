@@ -7,5 +7,12 @@ var foo = function() {
   alert('No debug for you');
   //@end
 
+  // Testing with @endif (new in 0.2.11)
+  //@if DEBUG
+  alert('Debug is set');
+  //@else
+  alert('No debug for you');
+  //@endif
+
   var bar = "Hello World";
 };
