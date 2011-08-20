@@ -162,6 +162,33 @@ class MacroEngine(object):
 
     return text
 
+def scan_and_parse_dir(srcdir, destdir, parser):
+    
+  for root, dirs, files in os.walk(srcdir):
+    for filename in files:
+        
+        if not(filename.endswith('.js')):
+            continue
+        
+        dir = root[len(srcdir)+1:] 
+        
+        if srcdir != root:
+            dir = dir + '/'
+            
+        inpath = "%s/%s" % (srcdir, dir)
+        outpath = "%s/%s" % (destdir, dir)
+        
+        in_file_path = "%s%s" % (inpath, filename)
+        out_file_path = "%s%s" % (outpath, filename)
+        print("%s -> %s", in_file_path, out_file_path) 
+
+        if not(os.path.exists(outpath)):
+            os.mkdir(outpath)
+            
+        data = parser.parse(in_file_path)
+        outfile = open(out_file_path,'w')
+        outfile.write(data)
+        outfile.close()
 
 # ---------------------------------
 #          MAIN
@@ -208,7 +235,9 @@ if __name__ == "__main__":
   p = MacroEngine()
 
   try:
-    opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "file=", "test", "def=", "savefail", "version"])
+    opts, args = getopt.getopt(sys.argv[1:],
+                               "hf:s:d:",
+                               ["help", "file=", "srcdir=","dstdir=", "test", "def=", "savefail", "version"])
   except getopt.GetoptError, err:
     print str(err)
     print __usage__
@@ -236,9 +265,22 @@ if __name__ == "__main__":
       p.save_expected_failures = True
       continue
 
-
+  srcdir = None
+  dstdir = None
   # Now handle commands the execute based on the config
   for o, a in opts:
+      
+    if o in ["-s", "--srcdir"]:
+        srcdir = a
+        
+    if o in ["-d", "--dstdir"]:
+        dstdir = a
+        if srcdir == None:
+            raise Exception("you must set the srcdir when setting a dstdir.")
+        else:
+            scan_and_parse_dir(srcdir, dstdir, p)
+        break
+        
     if o in ["-f", "--file"]:
       print p.parse(a)
       break
