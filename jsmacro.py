@@ -9,7 +9,7 @@ import sys
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.14"
+__version__ = "0.2.15"
 
 __usage__ = """Normal usage:
   jsmacro.py -f [INPUT_FILE_NAME] > [OUTPUT_FILE]
@@ -23,8 +23,9 @@ __usage__ = """Normal usage:
      --version     Print the version number of jsmacro being used."""
 
 __credits__ = [
-   'aliclark <https://github.com/aliclark>'
-   'Rodney Lopes Gomes <https://github.com/rlgomes>'
+   'aliclark <https://github.com/aliclark>',
+   'Rodney Lopes Gomes <https://github.com/rlgomes>',
+   'Elan Ruusamae <https://github.com/glensc>',
 ]
 
 
