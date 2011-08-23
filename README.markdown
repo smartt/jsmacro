@@ -78,7 +78,7 @@ Why bother?
 
 Why Python?
 -----------
-Besides being fun to use, Python is available on all of the development and deployment environments that I've used in the past who-knows-how-many years.  This is important, since it means not installing something new on servers (which might not be mine.)  While it might be fun to write this tool in Lisp, Haskell, or even JavaScript on v8, those aren't practical for a wider audience.  Perl, Python, and to some degree, Java, are a pretty safe bet.
+Besides being fun to use, Python is available on all of the development and deployment environments that I've used in the past who-knows-how-many years.  This is important, since it means not installing something new on servers (which might not be mine.)  While it might be fun to write this tool in another language, the one's I'm interested in aren't practical for a wider audience.  Perl, Python, and to some degree, Java, are a pretty safe bet for general use.
 
 Note though, that the tool intentionally isn't called "pyjsmacro".  I'm perfectly happy having implementations in other languages, provided they all pass the same test cases.
 
@@ -93,6 +93,10 @@ Future Ideas
 
 Changes
 -------
+v0.2.14
+
+ - jsmacro.py now runs on Python 3.  Testing environments include: Python 2.6, Python 2.7, PyPy 1.6 (which is Python 2.7.1), and Python 3.2.
+
 v0.2.10
 
  - Fixed a bug where a DEFINE on the command-line wasn't overriding a DEFINE in the input file.

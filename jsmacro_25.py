@@ -1,5 +1,14 @@
 #!/usr/bin/env python
 
+#
+#
+# This older snapshot is Python 2.5 compatible, whereas the main jsmacro.py targets
+# Python 2.6 and newer (including Python 3.)  There are no guarentees that this
+# version will be kept feature-complete in the future, but it may buy you some time
+# if you need jsmacro.py in production.
+#
+#
+
 from datetime import datetime
 import getopt
 import os
@@ -9,8 +18,7 @@ import sys
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.14"
-
+__version__ = "0.2.11.2"
 __usage__ = """Normal usage:
   jsmacro.py -f [INPUT_FILE_NAME] > [OUTPUT_FILE]
 
@@ -22,10 +30,6 @@ __usage__ = """Normal usage:
      --test        Run the test suite.
      --version     Print the version number of jsmacro being used."""
 
-__credits__ = [
-   'aliclark <https://github.com/aliclark>'
-   'Rodney Lopes Gomes <https://github.com/rlgomes>'
-]
 
 
 class MacroEngine(object):
@@ -60,7 +64,7 @@ class MacroEngine(object):
     self.env = {}
 
   def handle_define(self, key, value='1'):
-    if key in self.env:
+    if (self.env.has_key(key)):
       return
 
     self.env[key] = eval(value)
@@ -77,18 +81,15 @@ class MacroEngine(object):
     parts = re.split(self.re_else_pattern, text)
 
     try:
-      if self.env[arg]:
-        return "\n{s}".format(s=parts[0])
-
+      if (self.env[arg]):
+        return "\n%s" % parts[0]
       else:
         try:
-          return "{s}".format(s=parts[1])
-
+          return "%s" % parts[1]
         except IndexError:
           return ''
-
     except KeyError:
-      return "\n{s}".format(s=text)
+      return "\n%s" % text
 
   def handle_ifdef(self, arg, text):
     """
@@ -100,13 +101,11 @@ class MacroEngine(object):
     """
     parts = re.split(self.re_else_pattern, text)
 
-    if arg in self.env:
-      return "\n{s}".format(s=parts[0])
-
+    if (self.env.has_key(arg)):
+      return "\n%s" % parts[0]
     else:
       try:
-        return "{s}".format(s=parts[1])
-
+        return "%s" % parts[1]
       except IndexError:
         return ''
 
@@ -119,25 +118,25 @@ class MacroEngine(object):
     """
     parts = re.split(self.re_else_pattern, text)
 
-    if arg in self.env:
+    if (self.env.has_key(arg)):
       try:
-        return "{s}".format(s=parts[1])
-
+        return "%s" % parts[1]
       except IndexError:
         return ''
-
     else:
-      return "\n{s}".format(s=parts[0])
+      return "\n%s" % parts[0]
 
   def handle_macro(self, mo):
     method = mo.group(2)
     args = mo.group(3).strip()
-    code = "\n{s}".format(s=mo.group(4))
+    code = "\n%s" % mo.group(4)
 
-    # This is a fun line.  We construct a method name using the string found in the regex, and call that method on self
-    # with the arguments we have.  So, we can dynamically call methods... (and eventually, we'll support adding methods
+    # This is a fun line.  We construct a method name using the
+    # string found in the regex, and call that method on self
+    # with the arguments we have.  So, we can dynamically call
+    # methods... (and eventually, we'll support adding methods
     # at runtime :-)
-    return getattr(self, "handle_{m}".format(m=method))(args, code)
+    return getattr(self, "handle_%s" % method)(args, code)
 
 
   def parse(self, file_name):
@@ -148,9 +147,9 @@ class MacroEngine(object):
     fp.close()
 
     # Replace supported __foo__ statements
-    text = self.re_date_sub_macro.sub('{s}'.format(s=now.strftime("%b %d, %Y")),
-      self.re_time_sub_macro.sub('{s}'.format(s=now.strftime("%I:%M%p")),
-      self.re_datetime_sub_macro.sub('{s}'.format(s=now.strftime("%b %d, %Y %I:%M%p")), text)))
+    text = self.re_date_sub_macro.sub('%s' % (now.strftime("%b %d, %Y")),
+      self.re_time_sub_macro.sub('%s' % (now.strftime("%I:%M%p")),
+      self.re_datetime_sub_macro.sub('%s' % (now.strftime("%b %d, %Y %I:%M%p")), text)))
 
     # Parse for DEFINE statements
     for mo in self.re_define_macro.finditer(text):
@@ -172,28 +171,28 @@ class MacroEngine(object):
     return text
 
 def scan_and_parse_dir(srcdir, destdir, parser):
+    
   for root, dirs, files in os.walk(srcdir):
     for filename in files:
-
+        
         if not(filename.endswith('.js')):
             continue
-
-        dir = root[len(srcdir)+1:]
-
+        
+        dir = root[len(srcdir)+1:] 
+        
         if srcdir != root:
-            dir = '{d}/'.format(d=dir)
+            dir = dir + '/'
+            
+        inpath = "%s/%s" % (srcdir, dir)
+        outpath = "%s/%s" % (destdir, dir)
+        
+        in_file_path = "%s%s" % (inpath, filename)
+        out_file_path = "%s%s" % (outpath, filename)
+        print("%s -> %s", in_file_path, out_file_path) 
 
-        in_path = "{s}/{d}".format(s=srcdir, d=dir)
-        out_path = "{s}/{d}".format(s=destdir, d=dir)
-
-        in_file_path = "{p}/{f}".format(p=in_path, f=filename)
-        out_file_path = "{p}/{f}".format(p=out_path, f=filename)
-
-        print(("{i} -> {o}".format(i=in_file_path, o=out_file_path)))
-
-        if not(os.path.exists(out_path)):
-            os.mkdir(out_path)
-
+        if not(os.path.exists(outpath)):
+            os.mkdir(outpath)
+            
         data = parser.parse(in_file_path)
         outfile = open(out_file_path,'w')
         outfile.write(data)
@@ -207,8 +206,8 @@ def scan_for_test_files(dirname, parser):
   for root, dirs, files in os.walk(dirname):
     for in_filename in files:
       if in_filename.endswith('in.js'):
-        in_file_path = "{d}/{f}".format(d=dirname, f=in_filename)
-        out_file_path = "{d}/{f}out.js".format(d=dirname, f=in_filename[:-5])
+        in_file_path = "%s/%s" % (dirname, in_filename)
+        out_file_path = "%s/%s" % (dirname, "%sout.js" % (in_filename[:-5]))
 
         in_parsed = parser.parse(in_file_path)
 
@@ -216,20 +215,20 @@ def scan_for_test_files(dirname, parser):
         out_target_output = out_file.read()
         out_file.close()
 
-        if out_target_output == in_parsed:
-          print(("PASS [{s}]".format(s=in_file_path)))
+        if (out_target_output == in_parsed):
+          print "PASS [%s]" % (in_file_path)
         else:
-          print(("FAIL [{s}]".format(s=in_file_path)))
+          print "FAIL [%s]" % (in_file_path)
 
           if parser.save_expected_failures:
             # Write the expected output file for local diffing
-            fout = open('{s}_expected'.format(s=out_file_path), 'w')
+            fout = open('%s_expected' % out_file_path, 'w')
             fout.write(in_parsed)
             fout.close()
 
           else:
-            print(("\n-- EXPECTED --\n{s}".format(s=out_target_output)))
-            print(("\n-- GOT --\n{s}".format(s=in_parsed)))
+            print "\n-- EXPECTED --\n%s" % (out_target_output)
+            print "\n-- GOT --\n%s" % (in_parsed)
 
         parser.reset()
 
@@ -244,23 +243,20 @@ if __name__ == "__main__":
     opts, args = getopt.getopt(sys.argv[1:],
                                "hf:s:d:",
                                ["help", "file=", "srcdir=","dstdir=", "test", "def=", "savefail", "version"])
-  except getopt.GetoptError as err:
-    print((str(err)))
-    print(__usage__)
-
+  except getopt.GetoptError, err:
+    print str(err)
+    print __usage__
     sys.exit(2)
 
 
   # First handle commands that exit
   for o, a in opts:
     if o in ["-h", "--help"]:
-      print(__usage__)
-
+      print __usage__
       sys.exit(0)
 
     if o in ["--version"]:
-      print(__version__)
-
+      print __version__
       sys.exit(0)
 
 
@@ -276,34 +272,28 @@ if __name__ == "__main__":
 
   srcdir = None
   dstdir = None
-
   # Now handle commands the execute based on the config
   for o, a in opts:
+      
     if o in ["-s", "--srcdir"]:
         srcdir = a
-
+        
     if o in ["-d", "--dstdir"]:
         dstdir = a
-
         if srcdir == None:
             raise Exception("you must set the srcdir when setting a dstdir.")
-
         else:
             scan_and_parse_dir(srcdir, dstdir, p)
-
         break
-
+        
     if o in ["-f", "--file"]:
-      print((p.parse(a)))
-
+      print p.parse(a)
       break
 
     if o in ["--test"]:
-      print("Testing...")
+      print "Testing..."
       scan_for_test_files("testfiles", p)
-      print("Done.")
-
+      print "Done."
       break
 
   sys.exit(0)
-
