@@ -10,7 +10,7 @@ import sys
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010-2011, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.16"
+__version__ = "0.2.17"
 
 __usage__ = """Normal usage:
     jsmacro.py -f [INPUT_FILE_NAME] > [OUTPUT_FILE]
@@ -42,7 +42,9 @@ class MacroEngine(object):
         self.re_else_pattern = '//[\@|#]else'
 
         # Compile the main patterns
-        self.re_define_macro = re.compile("(\s*\/\/[\@|#]define\s*)(\w*)\s*(\w*)", re.I)
+        # Pattern change in 0.2.17 by aliclark. We're now a little more strict in blocking multi-line define statements,
+        # and ensuring that whitespace separates the variable name (and value) from the 'define' text.
+        self.re_define_macro = re.compile("([\\t ]*\/\/[\@|#]define[\\t ]+)(\w+)([\\t ]+(\w+))?", re.I)
 
         self.re_date_sub_macro = re.compile("[\@|#]\_\_date\_\_", re.I)
         self.re_time_sub_macro = re.compile("[\@|#]\_\_time\_\_", re.I)
