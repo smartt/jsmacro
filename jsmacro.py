@@ -30,6 +30,7 @@ __credits__ = [
     'Elan Ruusamae <https://github.com/glensc>',
 ]
 
+DEFINE_DEFAULT = '0'
 
 class MacroEngine(object):
     """
@@ -64,7 +65,7 @@ class MacroEngine(object):
     def reset(self):
         self.env = {}
 
-    def handle_define(self, key, value='1'):
+    def handle_define(self, key, value=DEFINE_DEFAULT):
         if key in self.env:
             return
 
@@ -162,6 +163,9 @@ class MacroEngine(object):
             if mo:
                 k = mo.group(2) # key
                 v = mo.group(3) # value
+
+                if v is None:
+                    v = DEFINE_DEFAULT
 
                 self.handle_define(k, v)
 
