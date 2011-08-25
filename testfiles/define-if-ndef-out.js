@@ -1,2 +1,2 @@
 
-print("Debug is NOT enabled);
+print("Debug is NOT enabled");

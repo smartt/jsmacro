@@ -3,7 +3,7 @@
 //#end
 
 //#if DEBUG
-print("Debug is enabled);
+print("Debug is enabled");
 //#else
-print("Debug is NOT enabled);
+print("Debug is NOT enabled");
 //#end
