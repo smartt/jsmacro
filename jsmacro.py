@@ -59,7 +59,7 @@ class MacroEngine(object):
         # //@MACRO <ARGUMENTS>
         # ...some code
         # //@end
-        self.re_wrapped_macro = re.compile("(\s*\/\/[\@|#])([a-z]+)\s+(\w*?\s)(.*?)(\s*\/\/[\@|#]end(if)?)", re.M | re.S)
+        self.re_wrapped_macro = re.compile("(\s*\/\/[\@|#])([a-z]+)\s+([\w\.\-\_\/]*?\s)(.*?)(\s*\/\/[\@|#]end(if)?)", re.M | re.S)
 
         self.reset()
 
@@ -136,6 +136,15 @@ class MacroEngine(object):
         else:
             return "\n{s}".format(s=parts[0])
 
+    def handle_include(self, arg, text):
+        """
+        Used to include an external (JavaScript) file.
+        """
+        # open the file (relative to the src file we're working with)
+        # run the parser over it
+        # return the output
+        return self.parse(os.path.realpath('{base}/{arg}'.format(base=self._basepath, arg=arg)))
+
     def handle_macro(self, mo):
         method = mo.group(2)
         args = mo.group(3).strip()
@@ -148,6 +157,9 @@ class MacroEngine(object):
 
     def parse(self, file_name):
         now = datetime.now()
+
+        # Save this for the @import implementation
+        self._basepath = os.path.realpath(os.path.dirname(file_name))
 
         fp = open(file_name, 'r')
         text = fp.read()

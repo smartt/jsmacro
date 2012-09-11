@@ -55,7 +55,7 @@ This tool was developed to meet a desire to strip Debug and Test code from produ
 
 
 jsmacro doesn't bother to clean up extra whitespace or line-breaks that result in macro parsing, since that's the job of a JavaScript minifier (which in my case, is the tool that runs next in my build process, right after jsmacro.)
-  
+
 Supported Macros
 ----------------
 
@@ -93,6 +93,10 @@ Future Ideas
 
 Changes
 -------
+v0.2.18
+
+ - Adds support for a //@include foo.js macro.
+
 v0.2.14
 
  - jsmacro.py now runs on Python 3.  Testing environments include: Python 2.6, Python 2.7, PyPy 1.6 (which is Python 2.7.1), and Python 3.2.
