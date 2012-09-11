@@ -10,7 +10,7 @@ import sys
 __author__ = "Erik Smartt"
 __copyright__ = "Copyright 2010-2011, Erik Smartt"
 __license__ = "MIT"
-__version__ = "0.2.17"
+__version__ = "0.2.18"
 
 __usage__ = """Normal usage:
     jsmacro.py -f [INPUT_FILE_NAME] > [OUTPUT_FILE]
@@ -31,6 +31,7 @@ __credits__ = [
 ]
 
 DEFINE_DEFAULT = '0'
+
 
 class MacroEngine(object):
     """
@@ -58,7 +59,7 @@ class MacroEngine(object):
         # //@MACRO <ARGUMENTS>
         # ...some code
         # //@end
-        self.re_wrapped_macro = re.compile("(\s*\/\/[\@|#])([a-z]+)\s+(\w*?\s)(.*?)(\s*\/\/[\@|#]end(if)?)", re.M|re.S)
+        self.re_wrapped_macro = re.compile("(\s*\/\/[\@|#])([a-z]+)\s+(\w*?\s)(.*?)(\s*\/\/[\@|#]end(if)?)", re.M | re.S)
 
         self.reset()
 
@@ -145,7 +146,6 @@ class MacroEngine(object):
         # at runtime :-)
         return getattr(self, "handle_{m}".format(m=method))(args, code)
 
-
     def parse(self, file_name):
         now = datetime.now()
 
@@ -161,8 +161,8 @@ class MacroEngine(object):
         # Parse for DEFINE statements
         for mo in self.re_define_macro.finditer(text):
             if mo:
-                k = mo.group(2) # key
-                v = mo.group(3) # value
+                k = mo.group(2)  # key
+                v = mo.group(3)  # value
 
                 if v is None:
                     v = DEFINE_DEFAULT
@@ -180,12 +180,13 @@ class MacroEngine(object):
 
         return text
 
+
 def scan_and_parse_dir(srcdir, destdir, parser):
     count = 0
 
     for root, dirs, files in os.walk(srcdir):
         for filename in files:
-            dir = root[len(srcdir)+1:]
+            dir = root[len(srcdir) + 1:]
 
             if srcdir != root:
                 dir = '{d}/'.format(d=dir)
@@ -209,13 +210,14 @@ def scan_and_parse_dir(srcdir, destdir, parser):
             print(("Processing {i} -> {o}".format(i=in_file_path, o=out_file_path)))
 
             data = parser.parse(in_file_path)
-            outfile = open(out_file_path,'w')
+            outfile = open(out_file_path, 'w')
             outfile.write(data)
             outfile.close()
 
             count += 1
 
     print(("Processed {c} files.".format(c=count)))
+
 
 # ---------------------------------
 #          TEST
@@ -270,14 +272,13 @@ if __name__ == "__main__":
     try:
         opts, args = getopt.getopt(sys.argv[1:],
                                "hf:s:d:",
-                               ["help", "file=", "srcdir=","dstdir=", "test", "def=", "savefail", "version"])
+                               ["help", "file=", "srcdir=", "dstdir=", "test", "def=", "savefail", "version"])
 
     except getopt.GetoptError as err:
         print((str(err)))
         print(__usage__)
 
         sys.exit(2)
-
 
     # First handle commands that exit
     for o, a in opts:
@@ -290,7 +291,6 @@ if __name__ == "__main__":
             print(__version__)
 
             sys.exit(0)
-
 
     # Next, handle commands that config
     for o, a in opts:
@@ -334,4 +334,3 @@ if __name__ == "__main__":
             break
 
     sys.exit(0)
-
