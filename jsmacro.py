@@ -13,15 +13,17 @@ __license__ = "MIT"
 __version__ = "0.2.18"
 
 __usage__ = """Normal usage:
-    jsmacro.py -f [INPUT_FILE_NAME] > [OUTPUT_FILE]
+  jsmacro.py -f [INPUT_FILE_NAME] > [OUTPUT_FILE]
 
-    Options:
-     --def [VAR]   Sets the supplied variable to True in the parser environment.
-     --file [VAR]  Same as -f; Used to load the input file.
-     --help        Prints this Help message.
-     --savefail    Saves the expected output of a failed test case to disk.
-     --test        Run the test suite.
-     --version     Print the version number of jsmacro being used.
+  Options:
+   --def [VAR[=VALUE]]    Defines the supplied variable (with a default value of 0) in the parser environment.
+   -f|--file [FILE]       Used to load a single input file.
+   -s|--srcdir [DIR]      Used to process all files in the specified directory. Use with -d|--dstdir
+   -d|--dstdir [DIR]      Used to output files processed using -s|--srcdir into the specified directory.
+   --help                 Prints this Help message.
+   --savefail             Saves the parsed output of a failed test case to disk.
+   --test                 Run the test suite.
+   --version              Print the version number of jsmacro being used.
 """
 
 __credits__ = [
@@ -39,7 +41,7 @@ class MacroEngine(object):
     to handle the macros found in a document.
     """
     def __init__(self):
-        self.save_expected_failures = False
+        self.save_failure_output = False
 
         self.re_else_pattern = '//[\@|#]else'
 
@@ -47,10 +49,13 @@ class MacroEngine(object):
         # Pattern change in 0.2.17 by aliclark. We're now a little more strict in blocking multi-line define statements,
         # and ensuring that whitespace separates the variable name (and value) from the 'define' text.
         self.re_define_macro = re.compile("([\\t ]*\/\/[\@|#]define[\\t ]+)(\w+)([\\t ]+(\w+))?", re.I)
+        self.re_define_cmdline_macro = re.compile("(\w+)[\=](\w+)", re.I)
 
         self.re_date_sub_macro = re.compile("[\@|#]\_\_date\_\_", re.I)
         self.re_time_sub_macro = re.compile("[\@|#]\_\_time\_\_", re.I)
         self.re_datetime_sub_macro = re.compile("[\@|#]\_\_datetime\_\_", re.I)
+        self.re_file_sub_macro = re.compile("[\@|#]\_\_file\_\_", re.I)
+        self.re_line_sub_macro = re.compile("[\@|#]\_\_line\_\_", re.I)
 
         self.re_stripline_macro = re.compile(".*\/\/[\@|#]strip.*", re.I)
 
@@ -166,9 +171,36 @@ class MacroEngine(object):
         fp.close()
 
         # Replace supported __foo__ statements
+        # Start with __line__ because it needs the un-preprocessed line number.
+        # This code is more complicated than I would like.
+        line_num = 1
+        prevnl = -1
+        while True:
+            nextnl = text.find('\n', prevnl + 1)
+            if nextnl < 0: break
+            # split into before, after and curline
+            before = text[:prevnl+1]
+            after = text[nextnl+1:]
+            curline = text[prevnl+1:nextnl+1]
+            # do the replacement
+            curline = self.re_line_sub_macro.sub('{l}'.format(l=line_num), curline)
+            # put it back together
+            text = before + curline + after
+            # search again for the next newline since the line number is probably not as long as @__line__
+            nextnl = text.find('\n', prevnl + 1)
+            # set up next loop iteration
+            prevnl = nextnl
+            line_num = line_num + 1
+        
+        # Now replace all other __foo__ statements.
+        # This is for __file__
+        file_name_slashes = file_name
+        file_name_slashes.replace('\\', '/')
+
         text = self.re_date_sub_macro.sub('{s}'.format(s=now.strftime("%b %d, %Y")),
             self.re_time_sub_macro.sub('{s}'.format(s=now.strftime("%I:%M%p")),
-            self.re_datetime_sub_macro.sub('{s}'.format(s=now.strftime("%b %d, %Y %I:%M%p")), text)))
+            self.re_datetime_sub_macro.sub('{s}'.format(s=now.strftime("%b %d, %Y %I:%M%p")),
+            self.re_file_sub_macro.sub('{f}'.format(f=file_name_slashes), text))))
 
         # Parse for DEFINE statements
         for mo in self.re_define_macro.finditer(text):
@@ -235,6 +267,8 @@ def scan_and_parse_dir(srcdir, destdir, parser):
 #          TEST
 # ---------------------------------
 def scan_for_test_files(dirname, parser):
+    num_pass = 0
+    num_fail = 0
     for root, dirs, files in os.walk(dirname):
         for in_filename in files:
             if in_filename.endswith('in.js'):
@@ -254,15 +288,20 @@ def scan_for_test_files(dirname, parser):
                 if out_target_output == in_parsed:
                     if expect_failure:
                         print(("FAIL [{s}]".format(s=in_file_path)))
+                        num_fail = num_fail+1
                     else:
                         print(("PASS [{s}]".format(s=in_file_path)))
+                        num_pass = num_pass+1
                 else:
                     if expect_failure:
                         print(("PASS [{s}]".format(s=in_file_path)))
+                        num_pass = num_pass+1
                     else:
                         print(("FAIL [{s}]".format(s=in_file_path)))
+                        num_fail = num_fail+1
 
-                    if parser.save_expected_failures:
+                if (out_target_output == in_parsed) == expect_failure:
+                    if parser.save_failure_output:
                         # Write the expected output file for local diffing
                         fout = open('{s}_expected'.format(s=out_file_path), 'w')
                         fout.write(in_parsed)
@@ -273,6 +312,10 @@ def scan_for_test_files(dirname, parser):
                         print(("\n-- GOT --\n{s}".format(s=in_parsed)))
 
                 parser.reset()
+                
+    num_tests = num_pass + num_fail
+    print(("\n{t} tests - {r}% passed ({p} passed, {f} failed)".format(t=num_tests, p=num_pass, f=num_fail, r=(num_pass / num_tests * 100.0))))
+
 
 
 # --------------------------------------------------
@@ -307,11 +350,12 @@ if __name__ == "__main__":
     # Next, handle commands that config
     for o, a in opts:
         if o in ["--def"]:
-            p.handle_define(a)
+            res = p.re_define_cmdline_macro.match(a)
+            p.handle_define(res.group(1), res.group(2))
             continue
 
         if o in ["--savefail"]:
-            p.save_expected_failures = True
+            p.save_failure_output = True
             continue
 
     srcdir = None
