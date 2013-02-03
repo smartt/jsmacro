@@ -20,6 +20,7 @@ __usage__ = """Normal usage:
    -f|--file [FILE]       Used to load a single input file.
    -s|--srcdir [DIR]      Used to process all files in the specified directory. Use with -d|--dstdir
    -d|--dstdir [DIR]      Used to output files processed using -s|--srcdir into the specified directory.
+   -e|--exclude [DIR]     Exclude the files in [DIR] (relative to the directory given in -s|--srcdir).
    --help                 Prints this Help message.
    --savefail             Saves the parsed output of a failed test case to disk.
    --test                 Run the test suite.
@@ -43,28 +44,28 @@ class MacroEngine(object):
     def __init__(self):
         self.save_failure_output = False
 
-        self.re_else_pattern = '//[\@|#]else'
+        self.re_else_pattern = '//[\@#]else'
 
         # Compile the main patterns
         # Pattern change in 0.2.17 by aliclark. We're now a little more strict in blocking multi-line define statements,
         # and ensuring that whitespace separates the variable name (and value) from the 'define' text.
-        self.re_define_macro = re.compile("([\\t ]*\/\/[\@|#]define[\\t ]+)(\w+)([\\t ]+(\w+))?", re.I)
+        self.re_define_macro = re.compile("([\\t ]*\/\/[\@#]define[\\t ]+)(\w+)([\\t ]+(\w+))?", re.I)
         self.re_define_cmdline_macro = re.compile("(\w+)[\=](\w+)", re.I)
 
-        self.re_date_sub_macro = re.compile("[\@|#]\_\_date\_\_", re.I)
-        self.re_time_sub_macro = re.compile("[\@|#]\_\_time\_\_", re.I)
-        self.re_datetime_sub_macro = re.compile("[\@|#]\_\_datetime\_\_", re.I)
-        self.re_file_sub_macro = re.compile("[\@|#]\_\_file\_\_", re.I)
-        self.re_line_sub_macro = re.compile("[\@|#]\_\_line\_\_", re.I)
+        self.re_date_sub_macro = re.compile("[\@#]\_\_date\_\_", re.I)
+        self.re_time_sub_macro = re.compile("[\@#]\_\_time\_\_", re.I)
+        self.re_datetime_sub_macro = re.compile("[\@#]\_\_datetime\_\_", re.I)
+        self.re_file_sub_macro = re.compile("[\@#]\_\_file\_\_", re.I)
+        self.re_line_sub_macro = re.compile("[\@#]\_\_line\_\_", re.I)
 
-        self.re_stripline_macro = re.compile(".*\/\/[\@|#]strip.*", re.I)
+        self.re_stripline_macro = re.compile(".*\/\/[\@#]strip.*", re.I)
 
         # A wrapped macro takes the following form:
         #
         # //@MACRO <ARGUMENTS>
         # ...some code
         # //@end
-        self.re_wrapped_macro = re.compile("(\s*\/\/[\@|#])([a-z]+)\s+([\w\.\-\_\/]*?\s)(.*?)(\s*\/\/[\@|#]end(if)?)", re.M | re.S)
+        self.re_wrapped_macro = re.compile("(\s*//[\@#])([a-z]+)\s+([\w\.\-\_\/]*?\s)(.*?)(\s*//[\@#]end(if)?)", re.M | re.S)
 
         self.reset()
 
@@ -100,6 +101,7 @@ class MacroEngine(object):
                     return ''
 
         except KeyError:
+            print("  Error: {a} is not defined, using unmodified block.".format(a=arg))
             return "\n{s}".format(s=text)
 
     def handle_ifdef(self, arg, text):
@@ -225,19 +227,31 @@ class MacroEngine(object):
         return text
 
 
-def scan_and_parse_dir(srcdir, destdir, parser):
+def scan_and_parse_dir(srcdir, destdir, excludes, parser):
     count = 0
 
     for root, dirs, files in os.walk(srcdir):
-        for filename in files:
-            dir = root[len(srcdir) + 1:]
+        dir = root[len(srcdir) + 1:]
+        dir = dir.replace("\\","/")     # slash works just as well for Windows.
 
-            if srcdir != root:
-                dir = '{d}/'.format(d=dir)
-
+        # check if the dir is in excludes
+        skip = False
+        for e in excludes:
+            if dir == e or dir.startswith(e + "/"):
+                skip = True
+                break
+        
+        if skip:
+            continue
+        
+        in_path = srcdir
+        out_path = destdir
+        if dir != "":
             in_path = "{s}/{d}".format(s=srcdir, d=dir)
             out_path = "{s}/{d}".format(s=destdir, d=dir)
 
+        for filename in files:
+            
             in_file_path = "{p}/{f}".format(p=in_path, f=filename)
             out_file_path = "{p}/{f}".format(p=out_path, f=filename)
 
@@ -326,8 +340,8 @@ if __name__ == "__main__":
 
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                               "hf:s:d:",
-                               ["help", "file=", "srcdir=", "dstdir=", "test", "def=", "savefail", "version"])
+                               "hf:s:d:e:",
+                               ["help", "file=", "srcdir=", "dstdir=", "exclude=", "test", "def=", "savefail", "version"])
 
     except getopt.GetoptError as err:
         print((str(err)))
@@ -360,7 +374,12 @@ if __name__ == "__main__":
 
     srcdir = None
     dstdir = None
+    excludes = []
 
+    for o, a in opts:
+        if o in ["-e", "--exclude"]:
+            excludes.append(a)
+    
     # Now handle commands the execute based on the config
     for o, a in opts:
         if o in ["-s", "--srcdir"]:
@@ -373,7 +392,7 @@ if __name__ == "__main__":
                 raise Exception("you must set the srcdir when setting a dstdir.")
 
             else:
-                scan_and_parse_dir(srcdir, dstdir, p)
+                scan_and_parse_dir(srcdir, dstdir, excludes, p)
 
             break
 
