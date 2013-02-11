@@ -1,7 +1,5 @@
 
-
 var foo = function() {
-
   alert('starting...');
 
   var bar = "Hello World";

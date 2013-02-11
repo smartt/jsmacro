@@ -1,5 +1,4 @@
 
-
 var foo = function() {
   //@if DEBUG
   alert('starting...');
