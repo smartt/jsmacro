@@ -375,7 +375,7 @@ if __name__ == "__main__":
     for o, a in opts:
         if o in ["--def"]:
             res = p.re_define_cmdline_macro.match(a)
-            p.handle_define(res.group(1), res.group(2))
+            p.do_define(res.group(1), res.group(2))
             continue
 
         if o in ["--savefail"]:
