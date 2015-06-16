@@ -1,5 +1,4 @@
 
-
 var foo = function() {
   alert('No debug for you');
 

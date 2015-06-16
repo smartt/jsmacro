@@ -10,8 +10,8 @@ var foo = function() {
   alert('That.');
 };
 
+
 var foo = function() {
-
   alert('Foo is defined');
-};
 
+};

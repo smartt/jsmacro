@@ -13,15 +13,19 @@ __license__ = "MIT"
 __version__ = "0.2.18"
 
 __usage__ = """Normal usage:
-    jsmacro.py -f [INPUT_FILE_NAME] > [OUTPUT_FILE]
+  jsmacro.py -f [INPUT_FILE_NAME] > [OUTPUT_FILE]
 
-    Options:
-     --def [VAR]   Sets the supplied variable to True in the parser environment.
-     --file [VAR]  Same as -f; Used to load the input file.
-     --help        Prints this Help message.
-     --savefail    Saves the expected output of a failed test case to disk.
-     --test        Run the test suite.
-     --version     Print the version number of jsmacro being used.
+  Options:
+   --def [VAR[=VALUE]]    Defines the supplied variable (with a default value of 0) in the parser environment.
+   -f|--file [FILE]       Used to load a single input file.
+   -s|--srcdir [DIR]      Used to process all files in the specified directory. Use with -d|--dstdir
+   -d|--dstdir [DIR]      Used to output files processed using -s|--srcdir into the specified directory.
+   -e|--exclude [DIR]     Exclude the files in [DIR] (relative to the directory given in -s|--srcdir).
+   --help                 Prints this Help message.
+   --savefail             Saves the parsed output of a failed test case to disk.
+   --testall              Run the test suite.
+   --test [NUM]           Run test number NUM only.
+   --version              Print the version number of jsmacro being used.
 """
 
 __credits__ = [
@@ -39,38 +43,51 @@ class MacroEngine(object):
     to handle the macros found in a document.
     """
     def __init__(self):
-        self.save_expected_failures = False
+        self.save_failure_output = False
 
-        self.re_else_pattern = '//[\@|#]else'
+        self.re_else_pattern = '[\t ]*//[@#]else[\r]?[\n]'
 
         # Compile the main patterns
-        # Pattern change in 0.2.17 by aliclark. We're now a little more strict in blocking multi-line define statements,
-        # and ensuring that whitespace separates the variable name (and value) from the 'define' text.
-        self.re_define_macro = re.compile("([\\t ]*\/\/[\@|#]define[\\t ]+)(\w+)([\\t ]+(\w+))?", re.I)
+        self.re_define_macro = re.compile("([\t ]*//[@#]define[\t ]+)(\w+)([\t ]+(\w+))?[\r]?[\n]", re.I)
+        self.re_define_cmdline_macro = re.compile("(\w+)[\=](\w+)", re.I)
+        self.re_include_macro = re.compile("([\t ]*//[@#]include[\t ]+)([^\r\n]+)[\r]?[\n]", re.I)
 
-        self.re_date_sub_macro = re.compile("[\@|#]\_\_date\_\_", re.I)
-        self.re_time_sub_macro = re.compile("[\@|#]\_\_time\_\_", re.I)
-        self.re_datetime_sub_macro = re.compile("[\@|#]\_\_datetime\_\_", re.I)
+        self.re_date_sub_macro = re.compile("[@#]__date__", re.I)
+        self.re_time_sub_macro = re.compile("[@#]__time__", re.I)
+        self.re_datetime_sub_macro = re.compile("[@#]__datetime__", re.I)
+        self.re_file_sub_macro = re.compile("[@#]__file__", re.I)
+        self.re_line_sub_macro = re.compile("[@#]__line__", re.I)
 
-        self.re_stripline_macro = re.compile(".*\/\/[\@|#]strip.*", re.I)
+        self.re_stripline_macro = re.compile(".*//[@#]strip.*[\r]?[\n]", re.I)
 
         # A wrapped macro takes the following form:
         #
         # //@MACRO <ARGUMENTS>
         # ...some code
         # //@end
-        self.re_wrapped_macro = re.compile("(\s*\/\/[\@|#])([a-z]+)\s+([\w\.\-\_\/]*?\s)(.*?)(\s*\/\/[\@|#]end(if)?)", re.M | re.S)
+        self.re_wrapped_macro = re.compile("([\t ]*//[@#])([a-z]+)\s+([\w_]*?\s)(.*?)([\t ]*//[@#]end(if)?)\s*?[\r]?[\n]", re.M | re.S)
 
         self.reset()
 
     def reset(self):
         self.env = {}
 
-    def handle_define(self, key, value=DEFINE_DEFAULT):
+    def do_define(self, key, value=DEFINE_DEFAULT):
         if key in self.env:
             return
 
         self.env[key] = eval(value)
+
+    def do_include(self, mo):
+        """
+        Used to include an external (JavaScript) file.
+        """
+        arg = mo.group(2).strip()
+
+        # open the file (relative to the src file we're working with)
+        # run the parser over it
+        # return the output
+        return self.parse(os.path.realpath('{base}/{arg}'.format(base=self._basepath, arg=arg)))
 
     def handle_if(self, arg, text):
         """
@@ -85,7 +102,7 @@ class MacroEngine(object):
 
         try:
             if self.env[arg]:
-                return "\n{s}".format(s=parts[0])
+                return "{s}".format(s=parts[0])
 
             else:
                 try:
@@ -95,7 +112,8 @@ class MacroEngine(object):
                     return ''
 
         except KeyError:
-            return "\n{s}".format(s=text)
+            print("  Error: {a} is not defined, using unmodified block.".format(a=arg))
+            return "{s}".format(s=text)
 
     def handle_ifdef(self, arg, text):
         """
@@ -108,7 +126,7 @@ class MacroEngine(object):
         parts = re.split(self.re_else_pattern, text)
 
         if arg in self.env:
-            return "\n{s}".format(s=parts[0])
+            return "{s}".format(s=parts[0])
 
         else:
             try:
@@ -134,21 +152,12 @@ class MacroEngine(object):
                 return ''
 
         else:
-            return "\n{s}".format(s=parts[0])
-
-    def handle_include(self, arg, text):
-        """
-        Used to include an external (JavaScript) file.
-        """
-        # open the file (relative to the src file we're working with)
-        # run the parser over it
-        # return the output
-        return self.parse(os.path.realpath('{base}/{arg}'.format(base=self._basepath, arg=arg)))
+            return "{s}".format(s=parts[0])
 
     def handle_macro(self, mo):
         method = mo.group(2)
         args = mo.group(3).strip()
-        code = "\n{s}".format(s=mo.group(4))
+        code = mo.group(4)
 
         # This is a fun line.  We construct a method name using the string found in the regex, and call that method on self
         # with the arguments we have.  So, we can dynamically call methods... (and eventually, we'll support adding methods
@@ -166,9 +175,36 @@ class MacroEngine(object):
         fp.close()
 
         # Replace supported __foo__ statements
+        # Start with __line__ because it needs the un-preprocessed line number.
+        # This code is more complicated than I would like.
+        line_num = 1
+        prevnl = -1
+        while True:
+            nextnl = text.find('\n', prevnl + 1)
+            if nextnl < 0: break
+            # split into before, after and curline
+            before = text[:prevnl+1]
+            after = text[nextnl+1:]
+            curline = text[prevnl+1:nextnl+1]
+            # do the replacement
+            curline = self.re_line_sub_macro.sub('{l}'.format(l=line_num), curline)
+            # put it back together
+            text = before + curline + after
+            # search again for the next newline since the line number is probably not as long as @__line__
+            nextnl = text.find('\n', prevnl + 1)
+            # set up next loop iteration
+            prevnl = nextnl
+            line_num = line_num + 1
+        
+        # Now replace all other __foo__ statements.
+        # This is for __file__
+        file_name_slashes = file_name
+        file_name_slashes.replace('\\', '/')
+
         text = self.re_date_sub_macro.sub('{s}'.format(s=now.strftime("%b %d, %Y")),
             self.re_time_sub_macro.sub('{s}'.format(s=now.strftime("%I:%M%p")),
-            self.re_datetime_sub_macro.sub('{s}'.format(s=now.strftime("%b %d, %Y %I:%M%p")), text)))
+            self.re_datetime_sub_macro.sub('{s}'.format(s=now.strftime("%b %d, %Y %I:%M%p")),
+            self.re_file_sub_macro.sub('{f}'.format(f=file_name_slashes), text))))
 
         # Parse for DEFINE statements
         for mo in self.re_define_macro.finditer(text):
@@ -179,7 +215,10 @@ class MacroEngine(object):
                 if v is None:
                     v = DEFINE_DEFAULT
 
-                self.handle_define(k, v)
+                self.do_define(k, v)
+                
+        # Parse include statements
+        text = self.re_include_macro.sub(self.do_include, text)
 
         # Delete the DEFINE statements
         text = self.re_define_macro.sub('', text)
@@ -193,19 +232,31 @@ class MacroEngine(object):
         return text
 
 
-def scan_and_parse_dir(srcdir, destdir, parser):
+def scan_and_parse_dir(srcdir, destdir, excludes, parser):
     count = 0
 
     for root, dirs, files in os.walk(srcdir):
-        for filename in files:
-            dir = root[len(srcdir) + 1:]
+        dir = root[len(srcdir) + 1:]
+        dir = dir.replace("\\","/")     # slash works just as well for Windows.
 
-            if srcdir != root:
-                dir = '{d}/'.format(d=dir)
-
+        # check if the dir is in excludes
+        skip = False
+        for e in excludes:
+            if dir == e or dir.startswith(e + "/"):
+                skip = True
+                break
+        
+        if skip:
+            continue
+        
+        in_path = srcdir
+        out_path = destdir
+        if dir != "":
             in_path = "{s}/{d}".format(s=srcdir, d=dir)
             out_path = "{s}/{d}".format(s=destdir, d=dir)
 
+        for filename in files:
+            
             in_file_path = "{p}/{f}".format(p=in_path, f=filename)
             out_file_path = "{p}/{f}".format(p=out_path, f=filename)
 
@@ -234,10 +285,18 @@ def scan_and_parse_dir(srcdir, destdir, parser):
 # ---------------------------------
 #          TEST
 # ---------------------------------
-def scan_for_test_files(dirname, parser):
+def scan_for_test_files(dirname, parser, test_index):
+    num_pass = 0
+    num_fail = 0
+    num_tests = 0
     for root, dirs, files in os.walk(dirname):
         for in_filename in files:
             if in_filename.endswith('in.js'):
+                num_tests = num_tests + 1
+                if test_index >= 0:
+                    if test_index != (num_tests - 1):
+                        continue
+                    
                 in_file_path = "{d}/{f}".format(d=dirname, f=in_filename)
                 out_file_path = "{d}/{f}out.js".format(d=dirname, f=in_filename[:-5])
 
@@ -253,16 +312,21 @@ def scan_for_test_files(dirname, parser):
 
                 if out_target_output == in_parsed:
                     if expect_failure:
-                        print(("FAIL [{s}]".format(s=in_file_path)))
+                        print(("Test {n} - FAIL [{s}]".format(n=num_tests-1,s=in_file_path)))
+                        num_fail = num_fail+1
                     else:
-                        print(("PASS [{s}]".format(s=in_file_path)))
+                        print(("Test {n} - PASS [{s}]".format(n=num_tests-1,s=in_file_path)))
+                        num_pass = num_pass+1
                 else:
                     if expect_failure:
-                        print(("PASS [{s}]".format(s=in_file_path)))
+                        print(("Test {n} - PASS [{s}]".format(n=num_tests-1,s=in_file_path)))
+                        num_pass = num_pass+1
                     else:
-                        print(("FAIL [{s}]".format(s=in_file_path)))
+                        print(("Test {n} - FAIL [{s}]".format(n=num_tests-1,s=in_file_path)))
+                        num_fail = num_fail+1
 
-                    if parser.save_expected_failures:
+                if (out_target_output == in_parsed) == expect_failure:
+                    if parser.save_failure_output:
                         # Write the expected output file for local diffing
                         fout = open('{s}_expected'.format(s=out_file_path), 'w')
                         fout.write(in_parsed)
@@ -270,9 +334,12 @@ def scan_for_test_files(dirname, parser):
 
                     else:
                         print(("\n-- EXPECTED --\n{s}".format(s=out_target_output)))
-                        print(("\n-- GOT --\n{s}".format(s=in_parsed)))
+                        print(("-- GOT --\n{s}".format(s=in_parsed)))
 
                 parser.reset()
+
+    print(("\n{t} tests - {r}% passed ({p} passed, {f} failed)".format(t=num_pass + num_fail, p=num_pass, f=num_fail, r=(num_pass / float(num_pass + num_fail) * 100.0))))
+
 
 
 # --------------------------------------------------
@@ -283,8 +350,8 @@ if __name__ == "__main__":
 
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                               "hf:s:d:",
-                               ["help", "file=", "srcdir=", "dstdir=", "test", "def=", "savefail", "version"])
+                               "hf:s:d:e:",
+                               ["help", "file=", "srcdir=", "dstdir=", "exclude=", "test=", "testall", "def=", "savefail", "version"])
 
     except getopt.GetoptError as err:
         print((str(err)))
@@ -307,16 +374,22 @@ if __name__ == "__main__":
     # Next, handle commands that config
     for o, a in opts:
         if o in ["--def"]:
-            p.handle_define(a)
+            res = p.re_define_cmdline_macro.match(a)
+            p.do_define(res.group(1), res.group(2))
             continue
 
         if o in ["--savefail"]:
-            p.save_expected_failures = True
+            p.save_failure_output = True
             continue
 
     srcdir = None
     dstdir = None
+    excludes = []
 
+    for o, a in opts:
+        if o in ["-e", "--exclude"]:
+            excludes.append(a)
+    
     # Now handle commands the execute based on the config
     for o, a in opts:
         if o in ["-s", "--srcdir"]:
@@ -329,7 +402,7 @@ if __name__ == "__main__":
                 raise Exception("you must set the srcdir when setting a dstdir.")
 
             else:
-                scan_and_parse_dir(srcdir, dstdir, p)
+                scan_and_parse_dir(srcdir, dstdir, excludes, p)
 
             break
 
@@ -339,10 +412,15 @@ if __name__ == "__main__":
             break
 
         if o in ["--test"]:
-            print("Testing...")
-            scan_for_test_files("testfiles", p)
+            print("Running only test {a}.".format(a=a))
+            scan_for_test_files("testfiles", p, int(a))
             print("Done.")
+            break
 
+        if o in ["--testall"]:
+            print("Running all tests.")
+            scan_for_test_files("testfiles", p, -1)
+            print("Done.")
             break
 
     sys.exit(0)
